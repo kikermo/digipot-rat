@@ -1,7 +1,9 @@
 #include <bluefruit.h>
 #include <Arduino.h>
+#include <SPI.h>
 
 uint32_t vbat_pin = PIN_VBAT;             // A7 for feather nRF52832, A6 for nRF52840
+const int slaveSelectPin = 10;
 
 #define DEBUG_MODE  true                 // Enables or disable serial comunication
 #define SAMPLE_PERIOD 10000               // Spacing between sample extraction in miliseconds (10 seconds)
@@ -62,35 +64,35 @@ void setup() {
   ratBleService.begin();
 
   // Gain Characteristic
-  gainCharacteristic.setProperties(CHR_PROPS_READ|CHR_PROPS_WRITE);
+  gainCharacteristic.setProperties(CHR_PROPS_READ | CHR_PROPS_WRITE);
   gainCharacteristic.setPermission(SECMODE_OPEN, SECMODE_OPEN);
   gainCharacteristic.setFixedLen(1);
   gainCharacteristic.setWriteCallback(gainCallback);
   gainCharacteristic.setUserDescriptor("GAIN");
   gainCharacteristic.begin();
 
-  
+
   // Tone Characteristic
-  toneCharacteristic.setProperties(CHR_PROPS_READ|CHR_PROPS_WRITE);
-  toneCharacteristic.setPermission(SECMODE_NO_ACCESS, SECMODE_OPEN);
+  toneCharacteristic.setProperties(CHR_PROPS_READ | CHR_PROPS_WRITE);
+  toneCharacteristic.setPermission(SECMODE_OPEN, SECMODE_OPEN);
   toneCharacteristic.setFixedLen(1);
   toneCharacteristic.setWriteCallback(toneCallback);
   toneCharacteristic.setUserDescriptor("TONE");
   toneCharacteristic.begin();
 
-  
+
   // Volume Characteristic
-  volumeCharacteristic.setProperties(CHR_PROPS_READ|CHR_PROPS_WRITE);
-  volumeCharacteristic.setPermission(SECMODE_NO_ACCESS, SECMODE_OPEN);
+  volumeCharacteristic.setProperties(CHR_PROPS_READ | CHR_PROPS_WRITE);
+  volumeCharacteristic.setPermission(SECMODE_OPEN, SECMODE_OPEN);
   volumeCharacteristic.setFixedLen(1);
   volumeCharacteristic.setWriteCallback(volumeCallback);
-  volCharacteristic.setUserDescriptor("VOLUME");
+  volumeCharacteristic.setUserDescriptor("VOLUME");
   volumeCharacteristic.begin();
 
-  
+
   // Pot 3 Characteristic
-  pot3Characteristic.setProperties(CHR_PROPS_READ|CHR_PROPS_WRITE);
-  pot3Characteristic.setPermission(SECMODE_NO_ACCESS, SECMODE_OPEN);
+  pot3Characteristic.setProperties(CHR_PROPS_READ | CHR_PROPS_WRITE);
+  pot3Characteristic.setPermission(SECMODE_OPEN, SECMODE_OPEN);
   pot3Characteristic.setFixedLen(1);
   pot3Characteristic.setWriteCallback(pot3Callback);
   pot3Characteristic.setUserDescriptor("POT 3");
@@ -99,6 +101,9 @@ void setup() {
   // Set up and start advertising
   startAdv();
 
+  // SPI setup
+  pinMode (slaveSelectPin, OUTPUT);
+  SPI.begin();
 
   // TODO read digipots initial value
   // gainCharacteristic.write()
@@ -122,7 +127,7 @@ void startAdv(void) {
 }
 
 void loop() {
- 
+
 }
 
 
@@ -206,62 +211,71 @@ void logBatteryResult(float vbatMv, uint8_t vbatPer) {
   Serial.println("%)");
 }
 
-void logMoistureSensor(uint8_t moistureVal) {
-  if (!DEBUG_MODE) {
-    return;
-  }
-
-  uint8_t moisturePer = moistureVal * 100 / 256;
-  Serial.print("Soil moisture = ");
-  Serial.print(moisturePer);
-  Serial.println("%");
-}
 
 void gainCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
-  //boolean lightOn = data[0] > 0;
-  // TODO read data
+  int gainVal = data[0];
 
-   // TODO Set pot value
+  digitalPotWrite(0, gainVal);
 
   if (!DEBUG_MODE) {
     return;
   }
   Serial.print("Gain Value = ");
-  Serial.println(data[0]);
+  Serial.println(gainVal);
 }
 
 void toneCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
-  // TODO read data
+  int toneVal = data[0];
 
-   // TODO Set pot value
+  digitalPotWrite(1, toneVal);
 
   if (!DEBUG_MODE) {
     return;
   }
   Serial.print("Tone Value = ");
-  Serial.println(data[0]);
+  Serial.println(toneVal);
 }
 
 void volumeCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
-  // TODO read data
+  int volumeVal = data[0];
 
-   // TODO Set pot value
+  digitalPotWrite(2, volumeVal);
 
   if (!DEBUG_MODE) {
     return;
   }
   Serial.print("Volume Value = ");
-  Serial.println(data[0]);
+  Serial.println(volumeVal);
 }
 
 void pot3Callback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
-  // TODO read data
+  int pot3Val = data[0];
 
-   // TODO Set pot value
+  digitalPotWrite(3, pot3Val);
 
   if (!DEBUG_MODE) {
     return;
   }
   Serial.print("Pot 3 Value = ");
-  Serial.println(data[0]);
+  Serial.println(pot3Val);
+}
+
+void digitalPotWrite(int address, int value) {
+  // take the SS pin low to select the chip:
+  digitalWrite(slaveSelectPin, LOW);
+
+  int writeCommand = 0x00000000;
+  int shiftedAddress = address << 4;
+  int responseA = SPI.transfer(writeCommand | shiftedAddress);
+  int responseB = SPI.transfer(value);
+
+  // take the SS pin high to de-select the chip:
+  digitalWrite(slaveSelectPin, HIGH);
+
+  if (!DEBUG_MODE) {
+    return;
+  }
+  Serial.print("response = ");
+  Serial.println(responseA);
+  Serial.println(responseB);
 }
