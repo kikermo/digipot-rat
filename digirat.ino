@@ -3,9 +3,13 @@
 #include <SPI.h>
 
 uint32_t vbat_pin = PIN_VBAT;             // A7 for feather nRF52832, A6 for nRF52840
-const int slaveSelectPin = 10;
 
-#define DEBUG_MODE  true                 // Enables or disable serial comunication
+const int gainSlaveSelectPin = 10;
+const int toneSlaveSelectPin = 9;
+const int volumeSlaveSelectPin = 8;
+
+
+#define DEBUG_MODE  false                 // Enables or disable serial comunication
 #define SAMPLE_PERIOD 10000               // Spacing between sample extraction in miliseconds (10 seconds)
 #define TX_POWER (4)                      // Transmission power in dBm (check bluefruit.h)
 
@@ -16,6 +20,9 @@ const int slaveSelectPin = 10;
 #define VBAT_DIVIDER_COMP (2.0F)          // Compensation factor for the VBAT divider 2
 
 #define REAL_VBAT_MV_PER_LSB (VBAT_DIVIDER_COMP * VBAT_MV_PER_LSB)
+
+const int potWriteCmd = B00010011;
+
 
 // BLE
 #define DIGIPOT_RAT_SERVICE_UUID (0x100289b5b20c4ad9808baeb72b05404b) // 100289b5-b20c-4ad9-808b-aeb72b05404b
@@ -89,20 +96,14 @@ void setup() {
   volumeCharacteristic.setUserDescriptor("VOLUME");
   volumeCharacteristic.begin();
 
-
-  // Pot 3 Characteristic
-  pot3Characteristic.setProperties(CHR_PROPS_READ | CHR_PROPS_WRITE);
-  pot3Characteristic.setPermission(SECMODE_OPEN, SECMODE_OPEN);
-  pot3Characteristic.setFixedLen(1);
-  pot3Characteristic.setWriteCallback(pot3Callback);
-  pot3Characteristic.setUserDescriptor("POT 3");
-  pot3Characteristic.begin();
-
   // Set up and start advertising
   startAdv();
 
   // SPI setup
-  pinMode (slaveSelectPin, OUTPUT);
+  pinMode (gainSlaveSelectPin, OUTPUT);
+  pinMode (toneSlaveSelectPin, OUTPUT);
+  pinMode (volumeSlaveSelectPin, OUTPUT);
+
   SPI.begin();
 
   // TODO read digipots initial value
@@ -215,7 +216,7 @@ void logBatteryResult(float vbatMv, uint8_t vbatPer) {
 void gainCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
   int gainVal = data[0];
 
-  digitalPotWrite(0, gainVal);
+  digitalPotWrite(gainSlaveSelectPin, gainVal);
 
   if (!DEBUG_MODE) {
     return;
@@ -227,7 +228,7 @@ void gainCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint
 void toneCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
   int toneVal = data[0];
 
-  digitalPotWrite(1, toneVal);
+  digitalPotWrite(toneSlaveSelectPin, toneVal);
 
   if (!DEBUG_MODE) {
     return;
@@ -239,7 +240,7 @@ void toneCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint
 void volumeCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
   int volumeVal = data[0];
 
-  digitalPotWrite(2, volumeVal);
+  digitalPotWrite(volumeSlaveSelectPin, volumeVal);
 
   if (!DEBUG_MODE) {
     return;
@@ -248,34 +249,17 @@ void volumeCallback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, ui
   Serial.println(volumeVal);
 }
 
-void pot3Callback(uint16_t conn_hdl, BLECharacteristic* chr, uint8_t* data, uint16_t len) {
-  int pot3Val = data[0];
-
-  digitalPotWrite(3, pot3Val);
-
-  if (!DEBUG_MODE) {
-    return;
-  }
-  Serial.print("Pot 3 Value = ");
-  Serial.println(pot3Val);
-}
-
-void digitalPotWrite(int address, int value) {
-  // take the SS pin low to select the chip:
+void digitalPotWrite(int slaveSelectPin, int value) {
   digitalWrite(slaveSelectPin, LOW);
-
-  int writeCommand = 0x00000000;
-  int shiftedAddress = address << 4;
-  int responseA = SPI.transfer(writeCommand | shiftedAddress);
-  int responseB = SPI.transfer(value);
-
-  // take the SS pin high to de-select the chip:
+  SPI.transfer(B00010011);
+  SPI.transfer(value);
   digitalWrite(slaveSelectPin, HIGH);
 
+
   if (!DEBUG_MODE) {
     return;
   }
-  Serial.print("response = ");
-  Serial.println(responseA);
-  Serial.println(responseB);
+  Serial.print("Selected POT = ");
+  Serial.println(slaveSelectPin);
+
 }
