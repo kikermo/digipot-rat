@@ -9,7 +9,7 @@ const int toneSlaveSelectPin = 9;
 const int volumeSlaveSelectPin = 8;
 
 
-#define DEBUG_MODE  false                 // Enables or disable serial comunication
+#define DEBUG_MODE  true                 // Enables or disable serial comunication
 #define SAMPLE_PERIOD 10000               // Spacing between sample extraction in miliseconds (10 seconds)
 #define TX_POWER (4)                      // Transmission power in dBm (check bluefruit.h)
 
@@ -29,7 +29,6 @@ const int potWriteCmd = B00010011;
 #define DIGIPOT_RAT_GAIN_UUID (0xd4afcbcd4b314ed7ba9828035d6ab6d8) // d4afcbcd-4b31-4ed7-ba98-28035d6ab6d8
 #define DIGIPOT_RAT_TONE_UUID (0xbfb430b86d824918a1d76f17a2f39c92) // bfb430b8-6d82-4918-a1d7-6f17a2f39c92
 #define DIGIPOT_RAT_VOLUME_UUID (0x7869beaeb0d34398a96d4a037aad947b) // 7869beae-b0d3-4398-a96d-4a037aad947b
-#define DIGIPOT_RAT_POT3_UUID (0x66b0581111e74d498dffd22d788cf007) // 66b05811-11e7-4d49-8dff-d22d788cf007
 
 
 BLEDis  bledis;  // device information
@@ -38,7 +37,6 @@ BLEService ratBleService = BLEService(DIGIPOT_RAT_SERVICE_UUID);
 BLECharacteristic gainCharacteristic = BLECharacteristic(DIGIPOT_RAT_GAIN_UUID);
 BLECharacteristic toneCharacteristic = BLECharacteristic(DIGIPOT_RAT_TONE_UUID);
 BLECharacteristic volumeCharacteristic = BLECharacteristic(DIGIPOT_RAT_VOLUME_UUID);
-BLECharacteristic pot3Characteristic = BLECharacteristic(DIGIPOT_RAT_POT3_UUID);
 
 void setup() {
 
